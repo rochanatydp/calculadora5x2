@@ -1,0 +1,463 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>:root{color-scheme:light}body{margin:0;font-size:14px}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Simulador Fim da 6x1</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=JetBrains+Mono:wght@400;500;600&family=Public+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: painel de parâmetros à esquerda, folha de ponto semanal e comparativo à direita. */
+:root{
+  --bg:#EDF0F3; --surface:#FFFFFF; --ink:#131C26; --muted:#5B6877; --line:#D3D9E0;
+  --accent:#1D4ED8; --accent-ink:#FFFFFF; --rest:#E3E8EE; --now:#E8EEFD;
+  --warn:#8A5200; --warn-bg:#FFF3D6; --good:#0F766E;
+  --f-display:'Bricolage Grotesque','Public Sans',system-ui,sans-serif;
+  --f-body:'Public Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --f-mono:'JetBrains Mono',ui-monospace,'SFMono-Regular',Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0E141B; --surface:#151D27; --ink:#E6EBF1; --muted:#94A1B1; --line:#263342;
+    --accent:#6C93FF; --accent-ink:#0E141B; --rest:#1C2733; --now:#1A2640;
+    --warn:#F0B455; --warn-bg:#2A2112; --good:#4FD1BF; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0E141B; --surface:#151D27; --ink:#E6EBF1; --muted:#94A1B1; --line:#263342;
+  --accent:#6C93FF; --accent-ink:#0E141B; --rest:#1C2733; --now:#1A2640;
+  --warn:#F0B455; --warn-bg:#2A2112; --good:#4FD1BF; color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5;
+  padding-block:28px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+h1,h2,h3{font-family:var(--f-display);margin:0;text-wrap:balance;letter-spacing:-.01em}
+h1{font-size:clamp(26px,4.2vw,40px);line-height:1.05;font-weight:700}
+h2{font-size:18px;font-weight:700}
+.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.eyebrow{font-family:var(--f-mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+header{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:flex-end;justify-content:space-between}
+header p{margin:6px 0 0;color:var(--muted);max-width:60ch}
+.status{font-family:var(--f-mono);font-size:12px;border:1px solid var(--line);background:var(--surface);padding:8px 12px;border-radius:6px;max-width:100%}
+.status b{color:var(--accent)}
+.grid{display:grid;gap:20px;grid-template-columns:minmax(0,1fr)}
+@media (min-width:960px){.grid{grid-template-columns:minmax(0,330px) minmax(0,1fr);align-items:start}}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:18px;display:flex;flex-direction:column;gap:14px;min-width:0}
+.main{display:flex;flex-direction:column;gap:20px;min-width:0}
+.sect{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:18px;min-width:0;display:flex;flex-direction:column;gap:14px}
+label,.lbl{font-size:12px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px}
+input[type=number],input[type=date],input[type=time],input[type=text],select{width:100%;font:inherit;font-family:var(--f-mono);font-size:14px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:5px;padding:8px 10px;min-width:0}
+select{font-family:var(--f-body)}
+input:focus-visible,select:focus-visible,button:focus-visible,.seg label:focus-within{outline:2px solid var(--accent);outline-offset:1px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.seg{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--line);border-radius:5px;overflow:hidden}
+.seg label{margin:0;padding:8px 6px;text-align:center;cursor:pointer;font-size:13px;color:var(--ink);background:var(--bg)}
+.seg input{position:absolute;opacity:0;pointer-events:none}
+.seg input:checked+span{font-weight:600}
+.seg label:has(input:checked){background:var(--accent);color:var(--accent-ink)}
+.chk{display:flex;gap:8px;align-items:flex-start;font-size:13px;font-weight:500;color:var(--ink);margin:0;cursor:pointer}
+.chk input{margin-top:3px;accent-color:var(--accent)}
+hr{border:0;border-top:1px solid var(--line);margin:2px 0;width:100%}
+.hint{font-size:12px;color:var(--muted);margin:0}
+/* linha do tempo */
+.tl{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+.tl div{border-left:3px solid var(--line);padding:2px 0 2px 12px;min-width:0}
+.tl .on{border-left-color:var(--accent)}
+.tl .d{font-family:var(--f-mono);font-size:20px;font-weight:600}
+.tl .t{font-size:13px;font-weight:600}
+.tl .s{font-size:12px;color:var(--muted)}
+/* folha semanal */
+.weeks{display:flex;flex-direction:column;gap:12px}
+.wk{display:grid;grid-template-columns:132px minmax(0,1fr);gap:14px;align-items:end;padding:12px;border:1px solid var(--line);border-radius:6px}
+.wk.now{background:var(--now);border-color:var(--accent)}
+@media (max-width:560px){.wk{grid-template-columns:minmax(0,1fr)}}
+.wk .who b{font-family:var(--f-display);font-size:16px;display:block}
+.wk .who span{font-size:12px;color:var(--muted)}
+.days{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
+.dcol{display:flex;flex-direction:column;gap:4px;align-items:stretch;min-width:0}
+.bar{height:72px;display:flex;align-items:flex-end}
+.bar i{display:block;width:100%;background:var(--accent);border-radius:3px 3px 0 0}
+.bar i.rest{background:repeating-linear-gradient(135deg,var(--rest) 0 5px,transparent 5px 10px);border:1px dashed var(--line);height:100%!important;border-radius:3px}
+.dcol .dn{font-family:var(--f-mono);font-size:10px;text-align:center;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+.dcol .dh{font-family:var(--f-mono);font-size:11px;text-align:center;font-weight:500}
+/* tabela */
+.tw{overflow-x:auto;border:1px solid var(--line);border-radius:6px}
+table{border-collapse:collapse;width:100%;min-width:720px;font-size:13.5px}
+th,td{padding:9px 12px;text-align:right;border-bottom:1px solid var(--line);vertical-align:top}
+th:first-child,td:first-child{text-align:left;font-family:var(--f-body)}
+th{font-family:var(--f-display);font-size:13px;font-weight:700;background:var(--bg)}
+th small{display:block;font-family:var(--f-mono);font-weight:400;color:var(--muted);font-size:11px}
+td{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+td:first-child{color:var(--muted);font-size:13px}
+tr.grp td{background:var(--bg);font-family:var(--f-mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);text-align:left;padding:6px 12px}
+tr:last-child td{border-bottom:0}
+.c-now{background:var(--now)}
+.up{color:var(--warn)}
+.tot td{font-weight:600}
+.tot td:first-child{color:var(--ink)}
+.alerts{display:flex;flex-direction:column;gap:8px}
+.al{border:1px solid var(--line);border-left:3px solid var(--accent);padding:9px 12px;border-radius:4px;font-size:13px;background:var(--bg)}
+.al.w{border-left-color:var(--warn);background:var(--warn-bg)}
+.al b{font-weight:600}
+button.cp{font:inherit;font-size:13px;font-weight:600;background:var(--accent);color:var(--accent-ink);border:0;border-radius:5px;padding:9px 14px;cursor:pointer;align-self:flex-start}
+.src{font-size:12px;color:var(--muted)}
+.src a{color:var(--accent)}
+.src ul{margin:6px 0 0;padding-left:18px}
+.how{list-style:none;margin:0;padding:0;display:grid;gap:8px 20px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));counter-reset:s}
+.how li{counter-increment:s;font-size:13px;color:var(--muted);display:flex;gap:10px;align-items:flex-start}
+.how li::before{content:counter(s);font-family:var(--f-mono);font-weight:600;color:var(--accent-ink);background:var(--accent);border-radius:50%;min-width:20px;height:20px;display:inline-grid;place-items:center;font-size:11px;flex:none}
+.how b{color:var(--ink);font-weight:600}
+.gh{font-family:var(--f-mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);border-top:1px solid var(--line);padding-top:12px;margin-top:2px}
+.hr-r{display:flex;flex-direction:column;gap:8px;align-items:flex-end;max-width:100%}
+.hr-r .hint{min-height:1em}
+@media (max-width:640px){.hr-r{align-items:flex-start;width:100%}}
+.tb{display:flex;flex-wrap:wrap;gap:8px}
+.tb button{font:inherit;font-size:13px;font-weight:600;background:var(--accent);color:var(--accent-ink);border:1px solid var(--accent);border-radius:5px;padding:8px 13px;cursor:pointer}
+.tb button.sec{background:transparent;color:var(--accent)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+
+
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <div class="eyebrow">Departamento Pessoal · EC do fim da 6x1</div>
+      <h1>Simulador Fim da 6x1</h1>
+      <p>Compare a jornada de hoje com as duas etapas da transição: 42h em 5x2 e depois 40h. Veja divisor, valor da hora, horário de saída e o custo de manter ou repor as horas.</p>
+    </div>
+    <div class="hr-r">
+      <div class="status" id="status"></div>
+      <div class="tb">
+        <button type="button" id="dlh" hidden>Baixar relatório</button>
+        <button type="button" id="dlc" class="sec" hidden>Baixar planilha (CSV)</button>
+        <button type="button" id="dlj" class="sec" hidden>Baixar JSON</button>
+        <button type="button" id="cp" class="sec">Copiar resumo</button>
+      </div>
+      <span class="hint" id="cpmsg" aria-live="polite"></span>
+    </div>
+  </header>
+  <ol class="how">
+    <li><span><b>Preencha à esquerda.</b> Salário, escala atual e a jornada que quer simular.</span></li>
+    <li><span><b>Defina o horário.</b> Informe entrada e intervalo e veja a saída sugerida.</span></li>
+    <li><span><b>Confira e emita.</b> O resultado atualiza sozinho; baixe o relatório quando terminar.</span></li>
+  </ol>
+
+  <div class="grid">
+    <form class="panel" id="f" onsubmit="return false">
+      <h2>Parâmetros</h2>
+      <div class="gh" style="border-top:0;padding-top:0">1 · Salário</div>
+      <div>
+        <span class="lbl">Informar por</span>
+        <div class="seg">
+          <label><input type="radio" name="mode" value="sal" checked><span>Salário mensal</span></label>
+          <label><input type="radio" name="mode" value="hora"><span>Valor da hora</span></label>
+        </div>
+      </div>
+      <div id="gSal"><label for="sal">Salário mensal (R$) · exemplo</label><input type="number" id="sal" value="3000" min="0" step="0.01"></div>
+      <div id="gHora" hidden><label for="hora">Valor da hora atual (R$)</label><input type="number" id="hora" value="13.64" min="0" step="0.01"></div>
+      <div class="gh">2 · Jornada</div>
+      <div>
+        <label for="escala">Escala atual</label>
+        <select id="escala">
+          <option value="6x1-44">6x1 · 44h (7h20 × 6 dias)</option>
+          <option value="5x2-44">5x2 · 44h (8h48 × 5 dias, sábado compensado)</option>
+          <option value="5x2-40">5x2 · 40h (já adequada)</option>
+          <option value="custom">Outra jornada</option>
+        </select>
+      </div>
+      <div class="row2" id="gCustom" hidden>
+        <div><label for="wc">Horas/semana</label><input type="number" id="wc" value="36" min="1" max="60" step="0.5"></div>
+        <div><label for="dc">Dias/semana</label><input type="number" id="dc" value="6" min="1" max="7" step="1"></div>
+      </div>
+      <div><label for="prom">Data da promulgação</label><input type="date" id="prom" value="2026-10-16">
+        <p class="hint">Padrão: 16/10/2026, data anunciada. Confira na publicação oficial.</p></div>
+      <div><label for="sim">Jornada simulada (horas/semana)</label><input type="number" id="sim" value="42" min="1" max="60" step="0.5">
+        <p class="hint">Simula o empregado migrando para esta jornada em 5x2. Padrão: 42h.</p></div>
+      <div><label for="dist">Distribuição das horas</label>
+        <select id="dist"><option value="eq">Igual de segunda a sexta</option><option value="sex">Sexta-feira mais curta</option></select></div>
+      <div id="gSex" hidden><label for="sex">Horas trabalhadas na sexta</label><input type="number" id="sex" value="8" min="1" max="10" step="0.25"></div>
+      <div class="gh">3 · Horário de trabalho</div>
+      <div class="row2">
+        <div><label for="entrada">Entrada</label><input type="time" id="entrada" value="08:00"></div>
+        <div><label for="interv">Intervalo (min)</label><input type="number" id="interv" value="60" min="0" step="5"></div>
+      </div>
+      <div class="gh">4 · Custos (opcional)</div>
+      <label class="chk"><input type="checkbox" id="he" checked><span>Comparar com manter as horas atuais e pagar o excedente como hora extra</span></label>
+      <div class="row2">
+        <div><label for="adic">Adicional HE (%)</label><input type="number" id="adic" value="50" min="0" step="5"></div>
+        <div><label for="enc">Encargos (%)</label><input type="number" id="enc" value="0" min="0" step="1"></div>
+      </div>
+      <label class="chk"><input type="checkbox" id="dsrk" checked><span>Incluir reflexo da HE no DSR</span></label>
+      <div class="row2">
+        <div><label for="uteis">Dias de trabalho/mês</label><input type="number" id="uteis" value="22" min="1" step="1"></div>
+        <div><label for="desc">Dias de descanso/mês</label><input type="number" id="desc" value="8" min="0" step="1"></div>
+      </div>
+      <div><label for="qtd">Empregados nesta situação</label><input type="number" id="qtd" value="1" min="1" step="1"></div>
+      <label class="chk"><input type="checkbox" id="sup"><span>Empregado com diploma de nível superior</span></label>
+      <div class="gh">5 · Identificação do relatório (opcional)</div>
+      <div><label for="emp">Empresa ou cliente</label><input type="text" id="emp" maxlength="80" placeholder="Nome da empresa"></div>
+      <div><label for="nome">Empregado ou função</label><input type="text" id="nome" maxlength="80" placeholder="Ex.: Auxiliar administrativo"></div>
+    </form>
+
+    <div class="main">
+      <section class="sect" id="simcard"></section>
+      <section class="sect" id="hcard"></section>
+      <section class="sect">
+        <h2>Prazos</h2>
+        <div class="tl" id="tl"></div>
+      </section>
+      <section class="sect">
+        <h2>Semana de trabalho</h2>
+        <div class="weeks" id="weeks"></div>
+      </section>
+      <section class="sect">
+        <h2>Comparativo</h2>
+        <div class="tw"><table id="tbl"></table></div>
+      </section>
+      <section class="sect">
+        <h2>Pontos de atenção</h2>
+        <div class="alerts" id="alerts"></div>
+        <div class="src">
+          Premissas: salário mensal mantido (texto aprovado veda redução); divisor = jornada semanal × 5 (220, 210, 200); mês de 52/12 semanas. O divisor de 210 para 42h é extensão da lógica da Súmula 431 do TST (200 para 40h); confirme com a convenção coletiva da categoria. Verifique o texto promulgado antes de aplicar a um cliente.
+          <ul>
+            <li><a href="https://agenciabrasil.ebc.com.br/politica/noticia/2026-10/fim-da-6x1-saiba-quando-entra-em-vigor-nova-jornada-de-trabalho" target="_blank" rel="noopener">Agência Brasil, 14/10/2026: regras de transição</a></li>
+            <li><a href="https://www.brasildefato.com.br/2026/10/14/o-que-muda-com-a-aprovacao-do-fim-da-escala-6x1-e-quando-a-jornada-5x2-comeca-a-valer/" target="_blank" rel="noopener">Brasil de Fato, 14/10/2026: etapas de 42h e 40h</a></li>
+            <li><a href="https://blog.convenia.com.br/fim-da-escala-6x1/" target="_blank" rel="noopener">Convenia: 5x2 com 44h também precisa ser ajustada</a></li>
+          </ul>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var $=function(id){return document.getElementById(id)};
+  var BRL=new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'});
+  var WK=52/12, TETO_SUP=21188.87;
+  function num(id,d){var v=parseFloat($(id).value);return isFinite(v)?v:d}
+  function fm(h){var t=Math.round(h*60),hh=Math.floor(t/60),mm=t%60;return hh+'h'+String(mm).padStart(2,'0')}
+  function hhmm(m){m=((Math.round(m)%1440)+1440)%1440;return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0')}
+  function pct(x){return (x>=0?'+':'')+(x*100).toFixed(2).replace('.',',')+'%'}
+  function dt(d){return d.toLocaleDateString('pt-BR')}
+  function addMonths(d,n){var r=new Date(d.getTime());var day=r.getDate();r.setDate(1);r.setMonth(r.getMonth()+n);var last=new Date(r.getFullYear(),r.getMonth()+1,0).getDate();r.setDate(Math.min(day,last));return r}
+  function rel(d,today){var n=Math.round((d-today)/86400000);return n===0?'hoje':n>0?'em '+n+' dias':'há '+Math.abs(n)+' dias'}
+  function scaleName(d){return d===6?'6x1':d===5?'5x2':d+'x'+(7-d)}
+
+  function model(){
+    var esc=$('escala').value,W0,d0;
+    if(esc==='6x1-44'){W0=44;d0=6}else if(esc==='5x2-44'){W0=44;d0=5}else if(esc==='5x2-40'){W0=40;d0=5}
+    else{W0=num('wc',36);d0=Math.min(7,Math.max(1,Math.round(num('dc',6))))}
+    var mode=document.querySelector('input[name=mode]:checked').value;
+    var S=mode==='sal'?num('sal',0):num('hora',0)*W0*5;
+    var enc=num('enc',0)/100, adic=num('adic',50)/100, qtd=Math.max(1,num('qtd',1));
+    var heOn=$('he').checked, dsrOn=$('dsrk').checked;
+    var uteis=Math.max(1,num('uteis',22)), desc=Math.max(0,num('desc',8));
+    var entrada=($('entrada').value||'08:00').split(':'); var ent=(+entrada[0])*60+(+entrada[1]);
+    var iv=num('interv',60);
+    var defs=[{k:'Hoje',W:W0,d:d0},{k:'Etapa 1',W:Math.min(W0,42),d:5},{k:'Etapa 2',W:Math.min(W0,40),d:5},{k:'Simulação',W:Math.min(W0,num('sim',42)),d:5}];
+    var ph=defs.map(function(p,i){
+      var D=p.W*5, hora=S/D, daily=p.W/p.d, worked=p.W*WK;
+      var o={k:p.k,W:p.W,d:p.d,D:D,hora:hora,daily:daily,worked:worked,
+        saida:hhmm(ent+daily*60+(daily>6?iv:0)),custoH:S*(1+enc)/worked};
+      var ex=(i>0&&heOn)?Math.max(0,W0-p.W):0;
+      o.ex=ex; o.exm=ex*WK;
+      o.heVal=o.exm*hora*(1+adic);
+      o.dsr=dsrOn?o.heVal*desc/uteis:0;
+      o.extraHE=(o.heVal+o.dsr)*(1+enc)*qtd;
+      o.extraRepo=o.exm*hora*(1+enc)*qtd;
+      o.total=(S+o.heVal+o.dsr)*(1+enc)*qtd;
+      return o;
+    });
+    return {W0:W0,d0:d0,S:S,enc:enc,qtd:qtd,heOn:heOn,ph:ph,base:S*(1+enc)*qtd};
+  }
+
+  function render(){
+    $('gSal').hidden=document.querySelector('input[name=mode]:checked').value!=='sal';
+    $('gHora').hidden=!$('gSal').hidden;
+    $('gCustom').hidden=$('escala').value!=='custom';
+    var m=model(), ph=m.ph;
+    var today=new Date(); today=new Date(today.getFullYear(),today.getMonth(),today.getDate());
+    var pv=($('prom').value||'2026-10-16').split('-');
+    var p0=new Date(+pv[0],+pv[1]-1,+pv[2]);
+    var d1=new Date(p0.getFullYear(),p0.getMonth(),p0.getDate()+60);
+    var d2=addMonths(p0,14), d3=addMonths(p0,12);
+    var now=today>=d2?2:today>=d1?1:0;
+
+    $('status').innerHTML='Hoje, '+dt(today)+': '+(now===0?'<b>regra atual</b> ('+fm(m.W0).replace('h',' h ')+'/sem)':now===1?'<b>Etapa 1</b> em vigor':'<b>Etapa 2</b> em vigor');
+    $('status').innerHTML=now===0?'Hoje, '+dt(today)+': <b>regra atual</b>, '+m.W0+'h/semana':now===1?'Hoje, '+dt(today)+': <b>Etapa 1</b> em vigor':'Hoje, '+dt(today)+': <b>Etapa 2</b> em vigor';
+
+    var s=ph[3];
+    window.__ctx={m:m,p0:p0,d1:d1,d2:d2};
+    function cell(t,v,sub){return '<div class="on"><div class="t">'+t+'</div><div class="d">'+v+'</div><div class="s">'+sub+'</div></div>'}
+    var sc=cell('Horas por dia',fm(s.daily),'5x2 · saída '+s.saida)
+      +cell('Valor da hora',BRL.format(s.hora),pct(s.hora/ph[0].hora-1)+' vs hoje · divisor '+s.D)
+      +cell('Quadro p/ repor a capacidade',pct(ph[0].W/s.W-1),'horas/mês: '+s.worked.toFixed(1).replace('.',',')+' (hoje '+ph[0].worked.toFixed(1).replace('.',',')+')');
+    if(m.heOn) sc+=cell('Custo extra/mês com HE',BRL.format(s.extraHE),'ou '+BRL.format(s.extraRepo)+' repondo sem adicional');
+    $('simcard').innerHTML='<h2>Simulação: '+s.W+'h em 5x2</h2><div class="tl">'+sc+'</div>';
+
+    var ev=($('entrada').value||'08:00').split(':'), entM=(+ev[0])*60+(+ev[1]), ivM=Math.max(0,num('interv',60));
+    var dist=$('dist').value; $('gSex').hidden=dist!=='sex';
+    var fri=Math.max(1,Math.min(10,num('sex',8))), hrs;
+    if(dist==='sex'&&s.W>fri){var o=(s.W-fri)/4;hrs=[o,o,o,o,fri]}else{hrs=[s.W/5,s.W/5,s.W/5,s.W/5,s.W/5]}
+    var dn=['Segunda','Terça','Quarta','Quinta','Sexta'], tot=0, over=false;
+    var hr=hrs.map(function(h,j){
+      tot+=h; if(h>8.0001) over=true;
+      var br=h>6?ivM:0;
+      return '<tr><td>'+dn[j]+'</td><td>'+hhmm(entM)+'</td><td>'+(br?br+' min':'—')+'</td><td><b>'+hhmm(entM+h*60+br)+'</b></td><td>'+fm(h)+'</td></tr>';
+    }).join('');
+    $('hcard').innerHTML='<h2>Horário sugerido para '+fm(s.W).replace('h00','h')+' por semana</h2>'
+      +'<div class="tw"><table style="min-width:440px"><thead><tr><th>Dia</th><th>Entrada</th><th>Intervalo</th><th>Saída</th><th>Horas</th></tr></thead><tbody>'+hr
+      +'<tr class="tot"><td>Total semanal</td><td></td><td></td><td></td><td>'+fm(tot)+'</td></tr></tbody></table></div>'
+      +'<p class="hint">Saída = entrada + horas do dia + intervalo. O intervalo só entra nos dias com mais de 6h de trabalho. '
+      +(over?'Há dias acima de 8h: o texto aprovado só admite isso na transição até 42h; com 40h o limite volta a 8h por dia.':'Nenhum dia passa de 8h.')+'</p>';
+
+    var tl=[['Promulgação',p0,'Marco inicial dos prazos',now===-1],
+      ['Etapa 1: 42h e 5x2',d1,'60 dias após a promulgação',now===1],
+      ['Etapa 2: 40h',d2,'14 meses após a promulgação',now===2],
+      ['Terceirizados do poder público',d3,'12 meses para encerrar a 6x1',false]];
+    $('tl').innerHTML=tl.map(function(r,i){
+      return '<div class="'+(((i===1&&now===1)||(i===2&&now===2))?'on':'')+'"><div class="t">'+r[0]+'</div><div class="d">'+dt(r[1])+'</div><div class="s">'+r[2]+' · '+rel(r[1],today)+'</div></div>';
+    }).join('');
+
+    var names=['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];
+    $('weeks').innerHTML=ph.map(function(p,i){
+      var cols=names.map(function(n,j){
+        if(j<p.d){var h=Math.min(100,p.daily/10*100);return '<div class="dcol"><div class="bar"><i style="height:'+h+'%"></i></div><div class="dh">'+fm(p.daily)+'</div><div class="dn">'+n+'</div></div>'}
+        return '<div class="dcol"><div class="bar"><i class="rest"></i></div><div class="dh">&nbsp;</div><div class="dn">'+n+'</div></div>';
+      }).join('');
+      return '<div class="wk'+(i===now?' now':'')+'"><div class="who"><b>'+p.k+'</b><span>'+p.W+'h · '+scaleName(p.d)+'<br>saída '+p.saida+'</span></div><div class="days">'+cols+'</div></div>';
+    }).join('');
+
+    function R(label,fn,cls){return '<tr'+(cls?' class="'+cls+'"':'')+'><td>'+label+'</td>'+ph.map(function(p,i){return '<td class="'+(i===now?'c-now':'')+'">'+fn(p,i)+'</td>'}).join('')+'</tr>'}
+    function G(t){return '<tr class="grp"><td colspan="5">'+t+'</td></tr>'}
+    var h0=ph[0].hora;
+    var rows='<thead><tr><th>&nbsp;</th>'+ph.map(function(p,i){return '<th class="'+(i===now?'c-now':'')+'">'+p.k+'<small>'+p.W+'h · '+scaleName(p.d)+'</small></th>'}).join('')+'</tr></thead><tbody>';
+    rows+=G('Jornada');
+    rows+=R('Horas por dia',function(p){return fm(p.daily)});
+    rows+=R('Horário de saída',function(p){return p.saida});
+    rows+=R('Divisor mensal',function(p){return p.D});
+    rows+=G('Remuneração');
+    rows+=R('Salário mensal',function(){return BRL.format(m.S)});
+    rows+=R('Valor da hora normal',function(p){return BRL.format(p.hora)});
+    rows+=R('Variação do valor da hora',function(p,i){return i===0?'—':'<span class="up">'+pct(p.hora/h0-1)+'</span>'});
+    rows+=G('Capacidade e custo da hora');
+    rows+=R('Horas trabalhadas/mês',function(p){return p.worked.toFixed(1).replace('.',',')});
+    rows+=R('Custo por hora trabalhada',function(p){return BRL.format(p.custoH)});
+    rows+=R('Quadro p/ repor a capacidade',function(p,i){return i===0?'—':'<span class="up">'+pct(ph[0].W/p.W-1)+'</span>'});
+    if(m.heOn){
+      rows+=G('Se mantiver as horas atuais ('+m.W0+'h/semana)');
+      rows+=R('Horas extras por semana',function(p,i){return i===0?'—':fm(p.ex)});
+      rows+=R('Horas extras por mês',function(p,i){return i===0?'—':fm(p.exm)});
+      rows+=R('HE + DSR por empregado',function(p,i){return i===0?'—':BRL.format(p.heVal+p.dsr)});
+      rows+=R('Custo extra/mês com HE',function(p,i){return i===0?'—':'<span class="up">'+BRL.format(p.extraHE)+'</span>'},'tot');
+      rows+=R('Custo extra repondo sem adicional',function(p,i){return i===0?'—':BRL.format(p.extraRepo)});
+      rows+=R('Custo mensal total ('+m.qtd+' emp.)',function(p){return BRL.format(p.total)},'tot');
+      rows+=R('Variação vs hoje',function(p,i){return i===0?'—':'<span class="up">'+pct(p.total/m.base-1)+'</span>'});
+    }
+    rows+='</tbody>';
+    $('tbl').innerHTML=rows;
+
+    var al=[];
+    if(ph[1].daily>8.0001) al.push(['', '<b>Jornada diária de '+fm(ph[1].daily)+' na Etapa 1.</b> Passa de 8h por dia. A reportagem da Agência Brasil descreve esse arranjo como transitório; na Etapa 2 o limite volta a 8h diárias.']);
+    if(m.W0<=ph[2].W) al.push(['', '<b>A jornada atual já está em '+m.W0+'h.</b> Não há redução de horas, mas a escala precisa ser 5x2.']);
+    if($('sup').checked&&m.S>=TETO_SUP) al.push(['w','<b>Nível superior com remuneração ≥ R$ 21.188,87</b> (2,5× o teto do INSS): a redução da jornada diária não se aplica; só por liberalidade ou acordo/convenção. A escala 5x2 continua exigida.']);
+    else if($('sup').checked) al.push(['','Nível superior abaixo de R$ 21.188,87 (2,5× o teto do INSS): a regra geral se aplica.']);
+    al.push(['','<b>Regime compensatório:</b> convenção ou acordo coletivo pode manter escala diferente da 5x2 (inclusive 6x1), com compensação no mesmo mês e média de dois repousos remunerados por semana. Este simulador parte da 5x2.']);
+    al.push(['','<b>MEI, ME e EPP:</b> o texto prevê lei complementar com medidas transitórias de mitigação. Acompanhe a regulamentação.']);
+    al.push(['','<b>Horista:</b> para não reduzir a renda, o valor da hora sobe na proporção das horas (44/42 na Etapa 1; 44/40 na Etapa 2). Os valores da tabela já refletem isso.']);
+    $('alerts').innerHTML=al.map(function(a){return '<div class="al '+(a[0]||'')+'">'+a[1]+'</div>'}).join('');
+
+    window.__summary=function(){
+      var l=['Fim da 6x1: simulação','Salário mensal: '+BRL.format(m.S)+' | Escala atual: '+m.W0+'h '+scaleName(m.d0),
+        'Etapa 1 ('+dt(d1)+'): '+ph[1].W+'h, 5x2, '+fm(ph[1].daily)+'/dia, divisor '+ph[1].D+', hora '+BRL.format(ph[1].hora)+' ('+pct(ph[1].hora/h0-1)+')',
+        'Etapa 2 ('+dt(d2)+'): '+ph[2].W+'h, 5x2, '+fm(ph[2].daily)+'/dia, divisor '+ph[2].D+', hora '+BRL.format(ph[2].hora)+' ('+pct(ph[2].hora/h0-1)+')'];
+      if(m.heOn) l.push('Mantendo '+m.W0+'h/sem: custo extra/mês de HE ('+m.qtd+' emp.): Etapa 1 '+BRL.format(ph[1].extraHE)+' | Etapa 2 '+BRL.format(ph[2].extraHE));
+      return l.join('\n');
+    };
+  }
+
+  document.getElementById('f').addEventListener('input',render);
+  document.getElementById('f').addEventListener('change',render);
+  /* ---- relatório ---- */
+  function esc(t){return String(t).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+  function say(t){$('cpmsg').textContent=t}
+  function who(){return {emp:($('emp').value||'').trim(),nome:($('nome').value||'').trim()}}
+  function rowsOf(tb){return Array.prototype.map.call(tb.rows,function(r){return Array.prototype.map.call(r.cells,function(c){return c.innerText.replace(/\s+/g,' ').trim()})})}
+  function slug(){var w=who().emp.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');return 'simulacao-fim-6x1'+(w?'-'+w:'')}
+  function tables(){return {cmp:rowsOf($('tbl')),hor:rowsOf($('hcard').querySelector('table'))}}
+  function csv(){
+    var w=who(),T=tables(),L=[['Simulação do fim da escala 6x1'],['Empresa',w.emp],['Empregado',w.nome],['Emitido em',new Date().toLocaleDateString('pt-BR')],[],['Horário sugerido']]
+      .concat(T.hor,[[],['Comparativo']],T.cmp);
+    return '﻿'+L.map(function(r){return r.map(function(c){return '"'+String(c).replace(/"/g,'""')+'"'}).join(';')}).join('\r\n');
+  }
+  function text(){
+    var w=who(),T=tables(),f=function(r){return r.join(' | ')};
+    return ['SIMULAÇÃO DO FIM DA ESCALA 6x1',(w.emp?'Empresa: '+w.emp:''),(w.nome?'Empregado: '+w.nome:''),'Emitido em '+new Date().toLocaleDateString('pt-BR'),'','HORÁRIO SUGERIDO']
+      .concat(T.hor.map(f),['','COMPARATIVO'],T.cmp.map(f)).filter(function(x,i){return x!==''||i>3}).join('\n');
+  }
+  function reportHTML(){
+    var w=who(),c=window.__ctx,m=c.m,s=m.ph[3],today=new Date().toLocaleDateString('pt-BR');
+    var P=[['Escala atual',$('escala').selectedOptions[0].text],['Salário mensal',BRL.format(m.S)],['Jornada simulada',s.W+'h por semana em 5x2'],
+      ['Entrada e intervalo',($('entrada').value||'')+' e '+num('interv',60)+' min'],['Promulgação',dt(c.p0)],['Etapa 1 (42h, 5x2)',dt(c.d1)],['Etapa 2 (40h)',dt(c.d2)]];
+    if(m.heOn)P.push(['Horas extras','Adicional de '+num('adic',50)+'%, encargos de '+num('enc',0)+'%, '+m.qtd+' empregado(s)'+($('dsrk').checked?', com reflexo no DSR':'')]);
+    var css='body{font:13px/1.45 Arial,Helvetica,sans-serif;color:#111;max-width:900px;margin:24px auto;padding:0 16px}h1{font-size:22px;margin:0 0 4px}h2{font-size:15px;margin:22px 0 8px;border-bottom:2px solid #1D4ED8;padding-bottom:3px}.m{color:#555;margin:0}table{border-collapse:collapse;width:100%;margin:6px 0}th,td{border:1px solid #bbb;padding:5px 8px;text-align:right}th:first-child,td:first-child{text-align:left}th{background:#eef1f5}th small{display:block;font-weight:400;color:#555}tr.grp td{background:#f3f4f6;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#555;text-align:left}.c-now{background:#e8eefd}tr.tot td{font-weight:700}table.p td:first-child{width:34%;font-weight:700;background:#f7f8fa}table.p td{text-align:left}.tl{display:flex;flex-wrap:wrap;gap:10px}.tl>div{border-left:3px solid #bbb;padding:2px 10px;min-width:180px}.d{font-weight:700;font-size:16px}.s{color:#555;font-size:12px}.al{border-left:3px solid #1D4ED8;background:#f5f7fb;padding:6px 10px;margin:6px 0}.al.w{border-left-color:#b7791f;background:#fff3d6}@media print{body{margin:0}h2{break-after:avoid}table,.al{break-inside:avoid}}';
+    var pr=P.map(function(r){return '<tr><td>'+esc(r[0])+'</td><td>'+esc(r[1])+'</td></tr>'}).join('');
+    return '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Simulação do fim da escala 6x1</title><style>'+css+'</style></head><body>'
+      +'<h1>Simulação do fim da escala 6x1</h1><p class="m">Emitido em '+today+(w.emp?' · '+esc(w.emp):'')+(w.nome?' · '+esc(w.nome):'')+'</p>'
+      +'<h2>Parâmetros</h2><table class="p">'+pr+'</table>'
+      +'<h2>Prazos</h2><div class="tl">'+$('tl').innerHTML+'</div>'
+      +'<h2>Horário sugerido</h2>'+$('hcard').querySelector('table').outerHTML
+      +'<h2>Comparativo</h2>'+$('tbl').outerHTML
+      +'<h2>Pontos de atenção</h2>'+$('alerts').innerHTML
+      +'<p class="m" style="margin-top:18px">Estimativa para apoio à decisão, baseada na regra de transição noticiada (42h e 5x2 em 60 dias; 40h em 14 meses após a promulgação). Salário mantido; divisor = jornada semanal × 5; mês de 52/12 semanas. Confirme o texto promulgado e a convenção coletiva antes de aplicar. Para salvar em PDF, abra este arquivo no navegador e use Imprimir.</p>'
+      +'</body></html>';
+  }
+  var DL=null;
+  var STANDALONE=!window.claude;
+  function save(name,data){
+    if(STANDALONE){
+      var ty=/\.html$/.test(name)?'text/html':/\.csv$/.test(name)?'text/csv':'application/json';
+      var u=URL.createObjectURL(new Blob([data],{type:ty+';charset=utf-8'})),a=document.createElement('a');
+      a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();
+      setTimeout(function(){URL.revokeObjectURL(u)},4000);say('Arquivo gerado.');return;
+    }
+    if(!DL)return;
+    DL.save({filename:name,data:data}).then(function(){say('Arquivo salvo.')},function(e){
+      if(e&&e.code==='declined')return;
+      say('Não foi possível salvar o arquivo. Use "Copiar resumo".');
+    });
+  }
+  $('dlh').addEventListener('click',function(){save(slug()+'.html',reportHTML())});
+  $('dlc').addEventListener('click',function(){save(slug()+'.csv',csv())});
+  function json(){
+    var w=who(),c=window.__ctx,m=c.m,r=function(x){return Math.round(x*100)/100};
+    return JSON.stringify({
+      emitidoEm:new Date().toISOString(),empresa:w.emp,empregado:w.nome,
+      parametros:{escalaAtualHorasSemana:m.W0,diasPorSemanaAtual:m.d0,salarioMensal:r(m.S),empregados:m.qtd,encargos:m.enc,promulgacao:c.p0.toISOString().slice(0,10),etapa1:c.d1.toISOString().slice(0,10),etapa2:c.d2.toISOString().slice(0,10)},
+      fases:m.ph.map(function(p){return {fase:p.k,horasSemana:p.W,diasSemana:p.d,horasPorDia:r(p.daily),saida:p.saida,divisor:p.D,valorHora:r(p.hora),horasTrabalhadasMes:r(p.worked),custoPorHoraTrabalhada:r(p.custoH),horasExtrasSemana:p.ex,horasExtrasMes:r(p.exm),horaExtraMaisDsr:r(p.heVal+p.dsr),custoExtraComHE:r(p.extraHE),custoExtraRepondo:r(p.extraRepo),custoMensalTotal:r(p.total)}})
+    },null,2);
+  }
+  $('dlj').addEventListener('click',function(){save(slug()+'.json',json())});
+  $('cp').addEventListener('click',function(){
+    var t=text();
+    function ok(){say('Resumo copiado.')}
+    function fail(){say('Não foi possível copiar automaticamente.')}
+    try{navigator.clipboard.writeText(t).then(ok,fail)}catch(e){fail()}
+  });
+  if(STANDALONE){$('dlh').hidden=false;$('dlc').hidden=false;$('dlj').hidden=false}
+  try{
+    if(window.claude&&window.claude.use){
+      window.claude.use('downloads').then(function(d){if(d){DL=d;$('dlh').hidden=false;$('dlc').hidden=false;$('dlj').hidden=false}},function(){});
+    }
+  }catch(e){}
+  render();
+})();
+</script>
+</body>
+</html>
