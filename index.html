@@ -194,9 +194,10 @@ button.cp{font:inherit;font-size:13px;font-weight:600;background:var(--accent);c
       </div>
       <label class="chk"><input type="checkbox" id="dsrk" checked><span>Incluir reflexo da HE no DSR</span></label>
       <div class="row2">
-        <div><label for="uteis">Dias de trabalho/mês</label><input type="number" id="uteis" value="22" min="1" step="1"></div>
-        <div><label for="desc">Dias de descanso/mês</label><input type="number" id="desc" value="8" min="0" step="1"></div>
+        <div><label for="uteis">Dias úteis/mês</label><input type="number" id="uteis" value="26" min="1" step="1"></div>
+        <div><label for="desc">Dias de DSR/mês</label><input type="number" id="desc" value="4" min="0" step="1"></div>
       </div>
+      <p class="hint">DSR sobre domingos e feriados. Padrão: 26 dias úteis e 4 de DSR no mês (15,4% da HE).</p>
       <div><label for="qtd">Empregados nesta situação</label><input type="number" id="qtd" value="1" min="1" step="1"></div>
       <label class="chk"><input type="checkbox" id="sup"><span>Empregado com diploma de nível superior</span></label>
       <div class="gh">5 · Identificação do relatório (opcional)</div>
@@ -218,18 +219,6 @@ button.cp{font:inherit;font-size:13px;font-weight:600;background:var(--accent);c
       <section class="sect">
         <h2>Comparativo</h2>
         <div class="tw"><table id="tbl"></table></div>
-      </section>
-      <section class="sect">
-        <h2>Pontos de atenção</h2>
-        <div class="alerts" id="alerts"></div>
-        <div class="src">
-          Premissas: salário mensal mantido (texto aprovado veda redução); divisor = jornada semanal × 5 (220, 210, 200); mês de 52/12 semanas. O divisor de 210 para 42h é extensão da lógica da Súmula 431 do TST (200 para 40h); confirme com a convenção coletiva da categoria. Verifique o texto promulgado antes de aplicar a um cliente.
-          <ul>
-            <li><a href="https://agenciabrasil.ebc.com.br/politica/noticia/2026-10/fim-da-6x1-saiba-quando-entra-em-vigor-nova-jornada-de-trabalho" target="_blank" rel="noopener">Agência Brasil, 14/10/2026: regras de transição</a></li>
-            <li><a href="https://www.brasildefato.com.br/2026/10/14/o-que-muda-com-a-aprovacao-do-fim-da-escala-6x1-e-quando-a-jornada-5x2-comeca-a-valer/" target="_blank" rel="noopener">Brasil de Fato, 14/10/2026: etapas de 42h e 40h</a></li>
-            <li><a href="https://blog.convenia.com.br/fim-da-escala-6x1/" target="_blank" rel="noopener">Convenia: 5x2 com 44h também precisa ser ajustada</a></li>
-          </ul>
-        </div>
       </section>
     </div>
   </div>
@@ -257,7 +246,7 @@ button.cp{font:inherit;font-size:13px;font-weight:600;background:var(--accent);c
     var S=mode==='sal'?num('sal',0):num('hora',0)*W0*5;
     var enc=num('enc',0)/100, adic=num('adic',50)/100, qtd=Math.max(1,num('qtd',1));
     var heOn=$('he').checked, dsrOn=$('dsrk').checked;
-    var uteis=Math.max(1,num('uteis',22)), desc=Math.max(0,num('desc',8));
+    var uteis=Math.max(1,num('uteis',26)), desc=Math.max(0,num('desc',4));
     var entrada=($('entrada').value||'08:00').split(':'); var ent=(+entrada[0])*60+(+entrada[1]);
     var iv=num('interv',60);
     var defs=[{k:'Hoje',W:W0,d:d0},{k:'Etapa 1',W:Math.min(W0,42),d:5},{k:'Etapa 2',W:Math.min(W0,40),d:5},{k:'Simulação',W:Math.min(W0,num('sim',42)),d:5}];
@@ -363,15 +352,6 @@ button.cp{font:inherit;font-size:13px;font-weight:600;background:var(--accent);c
     rows+='</tbody>';
     $('tbl').innerHTML=rows;
 
-    var al=[];
-    if(ph[1].daily>8.0001) al.push(['', '<b>Jornada diária de '+fm(ph[1].daily)+' na Etapa 1.</b> Passa de 8h por dia. A reportagem da Agência Brasil descreve esse arranjo como transitório; na Etapa 2 o limite volta a 8h diárias.']);
-    if(m.W0<=ph[2].W) al.push(['', '<b>A jornada atual já está em '+m.W0+'h.</b> Não há redução de horas, mas a escala precisa ser 5x2.']);
-    if($('sup').checked&&m.S>=TETO_SUP) al.push(['w','<b>Nível superior com remuneração ≥ R$ 21.188,87</b> (2,5× o teto do INSS): a redução da jornada diária não se aplica; só por liberalidade ou acordo/convenção. A escala 5x2 continua exigida.']);
-    else if($('sup').checked) al.push(['','Nível superior abaixo de R$ 21.188,87 (2,5× o teto do INSS): a regra geral se aplica.']);
-    al.push(['','<b>Regime compensatório:</b> convenção ou acordo coletivo pode manter escala diferente da 5x2 (inclusive 6x1), com compensação no mesmo mês e média de dois repousos remunerados por semana. Este simulador parte da 5x2.']);
-    al.push(['','<b>MEI, ME e EPP:</b> o texto prevê lei complementar com medidas transitórias de mitigação. Acompanhe a regulamentação.']);
-    al.push(['','<b>Horista:</b> para não reduzir a renda, o valor da hora sobe na proporção das horas (44/42 na Etapa 1; 44/40 na Etapa 2). Os valores da tabela já refletem isso.']);
-    $('alerts').innerHTML=al.map(function(a){return '<div class="al '+(a[0]||'')+'">'+a[1]+'</div>'}).join('');
 
     window.__summary=function(){
       var l=['Fim da 6x1: simulação','Salário mensal: '+BRL.format(m.S)+' | Escala atual: '+m.W0+'h '+scaleName(m.d0),
@@ -414,7 +394,6 @@ button.cp{font:inherit;font-size:13px;font-weight:600;background:var(--accent);c
       +'<h2>Prazos</h2><div class="tl">'+$('tl').innerHTML+'</div>'
       +'<h2>Horário sugerido</h2>'+$('hcard').querySelector('table').outerHTML
       +'<h2>Comparativo</h2>'+$('tbl').outerHTML
-      +'<h2>Pontos de atenção</h2>'+$('alerts').innerHTML
       +'<p class="m" style="margin-top:18px">Estimativa para apoio à decisão, baseada na regra de transição noticiada (42h e 5x2 em 60 dias; 40h em 14 meses após a promulgação). Salário mantido; divisor = jornada semanal × 5; mês de 52/12 semanas. Confirme o texto promulgado e a convenção coletiva antes de aplicar. Para salvar em PDF, abra este arquivo no navegador e use Imprimir.</p>'
       +'</body></html>';
   }
