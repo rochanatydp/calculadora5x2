@@ -226,6 +226,7 @@ button.cp{font:inherit;font-size:13px;font-weight:600;background:var(--accent);c
 
 <script>
 (function(){
+  document.addEventListener('contextmenu',function(e){e.preventDefault()});
   var $=function(id){return document.getElementById(id)};
   var BRL=new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'});
   var WK=52/12, TETO_SUP=21188.87;
